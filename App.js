@@ -1,137 +1,162 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
-
+import { View, Text, Image, TouchableOpacity, StyleSheet, ImageBackground } from 'react-native';
+import * as Font from 'expo-font';
 
 export default function App() {
-  const [estado, setEstado] = useState('normal');
-  
-  // Configurações do pet
-  const imagensPet = {
+  // Estado do pet: como ele está se sentindo
+  const [estadoPet, setEstadoPet] = useState('normal');
+  // Texto visível no balão
+  const [fala, setFala] = useState('');
+  // Fonte carregada (pixel)
+  const [fonteCarregada, setFonteCarregada] = useState(false);
+
+  // Carrega a fonte uma vez só
+  useEffect(() => {
+    async function carregarFonte() {
+      await Font.loadAsync({
+        pixel: require('./assets/fonts/PressStart2P-Regular.ttf'),
+      });
+      setFonteCarregada(true);
+    }
+    carregarFonte();
+  }, []);
+
+  // Muda o texto da fala sempre que o estado do pet mudar
+  useEffect(() => {
+    const falas = {
+      normal: 'Estou bem!',
+      fome: 'Estou com fome!',
+      coco: 'Fiz cocô...',
+      feliz: 'Obrigado!',
+    };
+
+    const novaFala = falas[estadoPet] || '';
+    setFala(novaFala);
+
+    // Depois de 2 segundos, esconde o balão
+    const timer = setTimeout(() => {
+      setFala('');
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [estadoPet]);
+
+  // Após um tempo no estado "normal", o pet fica com fome
+  useEffect(() => {
+    if (estadoPet === 'normal') {
+      const tempo = setTimeout(() => {
+        setEstadoPet('fome');
+      }, 5000);
+      return () => clearTimeout(tempo);
+    }
+  }, [estadoPet]);
+
+  // Função que alimenta o pet
+  const alimentarPet = () => {
+    setEstadoPet('feliz');
+    setTimeout(() => setEstadoPet('coco'), 6000);
+  };
+
+  // Função que limpa o cocô
+  const limparCoco = () => {
+    setEstadoPet('normal');
+  };
+
+  // Imagens do pet em cada estado
+  const imagemPet = {
     normal: require('./assets/gifs/petChild.gif'),
     fome: require('./assets/gifs/petChildCry.gif'),
-    comeu: require('./assets/gifs/petChild.gif'),
     coco: require('./assets/gifs/petChild.gif'),
     feliz: require('./assets/gifs/petChild.gif'),
   };
 
+  // Efeitos visuais
   const efeitos = {
     coracao: require('./assets/gifs/petBigSparkles.gif'),
     brilho: require('./assets/gifs/petSparkles.gif'),
-    cocozinho: require('./assets/gifs/petPoo.gif'),
+    coco: require('./assets/gifs/petPoo.gif'),
   };
-
-  const frases = {
-    normal: 'Estou bem!',
-    fome: 'Estou com fome!',
-    coco: 'Fiz cocô...',
-    feliz: 'Obrigado!',
-  };
-
-  // Lógica automática
-  useEffect(() => {
-    if (estado === 'normal') {
-      const timer = setTimeout(() => setEstado('fome'), 5000);
-      return () => clearTimeout(timer);
-    }
-  }, [estado]);
-
-  // Ações do usuário
-  const alimentar = () => {
-    setEstado('comeu');
-    setTimeout(() => setEstado('coco'), 2000);
-  };
-
-  const limpar = () => {
-    setEstado('feliz');
-    setTimeout(() => setEstado('normal'), 3000);
-  };
-
-  // Componente de Botão Reutilizável
-  const BotaoAcao = ({ imagem, aoPressionar, desativado, estilo }) => (
-    <TouchableOpacity
-      onPress={aoPressionar}
-      disabled={desativado}
-      style={[estilos.botao, estilo, desativado && estilos.botaoDesativado]}
-    >
-      <Image source={imagem} style={estilos.imagemBotao} />
-    </TouchableOpacity>
-  );
 
   return (
     <View style={estilos.tela}>
-      {/* Fundo */}
-      <Image source={require('./assets/fundo5.jpg')} style={estilos.fundo} />
-      
-      {/* Cabeçalho */}
-      <View style={estilos.cabecalho}>
-        <Text style={estilos.titulo}>Meu Pet Virtual</Text>
-        
-        <View style={estilos.botoes}>
-          <BotaoAcao
-            imagem={require('./assets/comida.png')}
-            aoPressionar={alimentar}
-            desativado={estado !== 'fome'}
-            estilo={estilos.botaoComida}
-          />
-          
-          <BotaoAcao
-            imagem={require('./assets/limpar.png')}
-            aoPressionar={limpar}
-            desativado={estado !== 'coco'}
-            estilo={estilos.botaoLimpar}
-          />
-        </View>
+      <Image source={require('./assets/fundo2.png')} style={estilos.fundo} />
+
+      <View style={estilos.botoesContainer}>
+        {/* Botão de comida */}
+        <TouchableOpacity
+          onPress={alimentarPet}
+          disabled={estadoPet !== 'fome'}
+          style={[
+            estilos.botao,
+            estilos.botaoComida,
+            estadoPet !== 'fome' && estilos.botaoDesativado,
+          ]}
+        >
+          <Image source={require('./assets/comida.png')} style={estilos.imagemBotao} />
+        </TouchableOpacity>
+
+        {/* Botão de limpeza */}
+        <TouchableOpacity
+          onPress={limparCoco}
+          disabled={estadoPet !== 'coco'}
+          style={[
+            estilos.botao,
+            estilos.botaoLimpar,
+            estadoPet !== 'coco' && estilos.botaoDesativado,
+          ]}
+        >
+          <Image source={require('./assets/limpar.png')} style={estilos.imagemBotao} />
+        </TouchableOpacity>
       </View>
 
-      {/* Área do Pet */}
+      {/* Balão de fala */}
+      {fala !== '' && (
+        <View style={estilos.containerBalao}>
+          <ImageBackground
+            source={require('./assets/balao2.png')}
+            style={estilos.balaoPixel}
+            resizeMode="stretch"
+          >
+            <Text style={estilos.textoPixel}>{fala}</Text>
+          </ImageBackground>
+        </View>
+      )}
+
+      {/* Pet e efeitos */}
       <View style={estilos.areaPet}>
-        <Image source={imagensPet[estado]} style={estilos.imagemPet} />
-        
-        {/* Efeitos especiais */}
-        {estado === 'comeu' && (
-          <Image source={efeitos.coracao} style={estilos.efeito} />
-        )}
-        {estado === 'feliz' && (
+        <Image source={imagemPet[estadoPet]} style={estilos.imagemPet} />
+
+        {estadoPet === 'feliz' && (
           <Image source={efeitos.brilho} style={estilos.efeito} />
         )}
-        {estado === 'coco' && (
-          <Image source={efeitos.cocozinho} style={estilos.efeitoCoco} />
+
+        {estadoPet === 'coco' && (
+          <Image source={efeitos.coco} style={estilos.efeitoCoco} />
+        )}
+
+        {estadoPet === 'feliz' && (
+          <Image source={efeitos.coracao} style={estilos.efeito} />
         )}
       </View>
-
-      {/* Mensagem do Pet */}
-      <Text style={estilos.mensagem}>{frases[estado]}</Text>
     </View>
   );
 }
 
-// Estilos da página
 const estilos = StyleSheet.create({
   tela: {
     flex: 1,
-    alignItems: 'center'
+    alignItems: 'center',
   },
   fundo: {
     ...StyleSheet.absoluteFillObject,
     width: '100%',
     height: '100%',
-    zIndex: -1
+    zIndex: -1,
   },
-  cabecalho: {
-    marginTop: 130,
-    alignItems: 'center'
-  },
-  titulo: {
-    fontSize: 26,
-    fontFamily: 'font',
-    color: '#FFF',
-    backgroundColor: '#000',
-    padding: 10,
-    margin: 10
-  },
-  botoes: {
+  botoesContainer: {
+    marginTop: 100,
     flexDirection: 'row',
-    margin: 20
+    gap: 20,
   },
   botao: {
     width: 70,
@@ -139,51 +164,65 @@ const estilos = StyleSheet.create({
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 10,
-    borderWidth: 4
+    borderWidth: 4,
   },
   botaoComida: {
     backgroundColor: '#f0c9b8',
-    borderColor: '#d06a36'
+    borderColor: '#d06a36',
   },
   botaoLimpar: {
     backgroundColor: '#FFF',
-    borderColor: '#b3bcec'
+    borderColor: '#b3bcec',
   },
   botaoDesativado: {
-    opacity: 0.4
+    opacity: 0.4,
   },
   imagemBotao: {
     width: 40,
-    height: 40
+    height: 40,
   },
   areaPet: {
     position: 'absolute',
-    bottom: 150,
-    alignItems: 'center'
+    bottom: 70,
+    alignItems: 'center',
   },
   imagemPet: {
     width: 170,
-    height: 170
+    height: 170,
   },
   efeito: {
     position: 'absolute',
     width: 50,
     height: 50,
     top: 60,
-    left: 120
+    left: 120,
   },
   efeitoCoco: {
     width: 80,
     height: 80,
     bottom: 10,
-    left: 100
+    left: 100,
+    position: 'absolute',
   },
-  mensagem: {
-    fontSize: 18,
-    marginVertical: 20,
-    color: '#FFF',
-    backgroundColor: '#000',
-    padding: 10
-  }
+  containerBalao: {
+    position: 'absolute',
+    top: '38%',
+    alignSelf: 'center',
+    alignItems: 'flex-start',
+    zIndex: 5,
+  },
+  balaoPixel: {
+    width: 180,
+    height: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    resizeMode: 'contain',
+  },
+  textoPixel: {
+    color: '#000',
+    fontSize: 10,
+    fontFamily: 'pixel',
+    textAlign: 'center',
+    lineHeight: 12,
+  },
 });
