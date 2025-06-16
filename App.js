@@ -17,6 +17,18 @@ export default function App() {
     require('./assets/fundos/fundo1.jpg'),
     require('./assets/fundos/fundo2.jpg'),
     require('./assets/fundos/fundo3.jpg'),
+    require('./assets/fundos/fundo4.jpg'),
+    require('./assets/fundos/fundo5.jpg'),
+    require('./assets/fundos/fundo6.jpg'),
+    require('./assets/fundos/fundo7.jpg'),
+    require('./assets/fundos/fundo8.jpg'),
+    require('./assets/fundos/fundo9.jpg'),
+    require('./assets/fundos/fundo10.jpg'),
+    require('./assets/fundos/fundo11.jpg'),
+    require('./assets/fundos/fundo12.jpg'),
+    require('./assets/fundos/fundo13.jpg'),
+    require('./assets/fundos/fundo14.jpg'),
+    require('./assets/fundos/fundo15.jpg'),
   ];
   const [fundoAtual, setFundoAtual] = useState(0);
 
