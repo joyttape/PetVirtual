@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, ImageBackground } from 'react-native';
 import * as Font from 'expo-font';
 
@@ -6,13 +6,16 @@ export default function App() {
   // Estado atual do pet: 'normal', 'fome', 'feliz' ou 'coco'
   const [estadoPet, setEstadoPet] = useState('normal');
 
-  // Fala visível do pet (texto no balão)
+  // Texto visível na fala do pet (balão)
   const [fala, setFala] = useState('');
 
-  // Controle para saber se a fonte foi carregada
+  // Controle para saber se a fonte pixel foi carregada
   const [fonteCarregada, setFonteCarregada] = useState(false);
 
-  // Lista de fundos disponíveis
+  // Ref para controlar o timeout da fala e evitar sobreposição
+  const falaTimeout = useRef(null);
+
+  // Lista de fundos disponíveis para o fundo da tela
   const fundos = [
     require('./assets/fundos/fundo1.jpg'),
     require('./assets/fundos/fundo2.jpg'),
@@ -30,20 +33,35 @@ export default function App() {
     require('./assets/fundos/fundo14.jpg'),
     require('./assets/fundos/fundo15.jpg'),
   ];
+  // Estado para guardar o índice do fundo atual selecionado
   const [fundoAtual, setFundoAtual] = useState(0);
 
-  // Quantidade de cocôs acumulados
+  // Quantidade acumulada de cocôs na tela
   const [quantidadeCoco, setQuantidadeCoco] = useState(0);
 
-  // Lista de chapéus
+  // Lista de chapéus disponíveis para o pet
   const chapeus = [
     null,
-    require('./assets/chapeus/chapeu1.png'),
-    require('./assets/chapeus/chapeu2.png'),
+    require('./assets/chapeus/chapeu7.png'),
+    require('./assets/chapeus/chapeu5.png'),
+    require('./assets/chapeus/chapeu6.png'),
+
   ];
+
+  //estilo dos chapéus
+  const estilosChapeus = {
+  1: { width: 200, height: 130, top: -50 },
+  2: { width: 130, height: 100, top: -50},
+  3: { width: 100, height: 99, top: -45},
+  };
+
+  // Estado para armazenar o chapéu atual selecionado
   const [chapeuAtual, setChapeuAtual] = useState(0);
 
-  // Carrega a fonte pixel quando o app inicia
+  // Tempo (em ms) para o pet começar a sentir fome após estar normal
+  const TEMPO_PARA_SENTIR_FOME = 9000; // 30 segundos
+
+  // Carrega a fonte pixel ao iniciar o app
   useEffect(() => {
     async function carregarFonte() {
       await Font.loadAsync({
@@ -54,61 +72,78 @@ export default function App() {
     carregarFonte();
   }, []);
 
-  // Mostra falas diferentes de acordo com o estado do pet
+  // Exibe falas diferentes dependendo do estado atual do pet
   useEffect(() => {
     const mensagens = {
-      normal: 'Estou bem!',
-      fome: 'Estou com fome!',
-      coco: 'Fiz cocô...',
-      feliz: 'Obrigado!',
+      normal: ['Estou bem!', 'Adoro esse lugar!', 'Tudo tranquilo.'],
+      fome: ['Estou com fome!', 'Me dá comida!', 'Preciso comer!'],
+      coco: ['Fiz cocô...', 'Ops... sujou!', 'Alguém limpa isso?'],
+      feliz: ['Obrigado!', 'Amei isso!', 'Delícia!'],
     };
 
-    setFala(mensagens[estadoPet] || '');
+    // Seleciona uma fala aleatória para o estado atual
+    const opcoes = mensagens[estadoPet] || [''];
+    const falaAleatoria = opcoes[Math.floor(Math.random() * opcoes.length)];
+    setFala(falaAleatoria);
 
-    // Oculta a fala após 2 segundos
-    const timer = setTimeout(() => setFala(''), 2000);
-    return () => clearTimeout(timer);
+    // Limpa timeout anterior antes de criar um novo para evitar sobreposição
+    if (falaTimeout.current) {
+      clearTimeout(falaTimeout.current);
+    }
+    falaTimeout.current = setTimeout(() => setFala(''), 2000);
+
+    // Cleanup do efeito para limpar o timeout quando o componente desmontar ou estado mudar
+    return () => {
+      if (falaTimeout.current) {
+        clearTimeout(falaTimeout.current);
+      }
+    };
   }, [estadoPet]);
 
-  // Após um tempo, o pet fica com fome automaticamente
+  // Inicia o timer para o pet ficar com fome somente se estiver no estado 'normal'
   useEffect(() => {
-    const tempoParaFicarComFome = setTimeout(() => {
-      setEstadoPet('fome');
-    }, 8000);
+    if (estadoPet !== 'normal') return; // Só inicia timer se estiver normal
 
-    return () => clearTimeout(tempoParaFicarComFome);
+    const id = setTimeout(() => {
+      setEstadoPet('fome');
+    }, TEMPO_PARA_SENTIR_FOME);
+
+    // Limpa o timer caso o estado mude antes do tempo acabar
+    return () => clearTimeout(id);
   }, [estadoPet]);
 
-  // Função chamada ao alimentar o pet
+  // Função chamada ao alimentar o pet, válida para estados 'fome' e 'coco'
   function alimentarPet() {
-    setEstadoPet('feliz');
-    setQuantidadeCoco(prev => prev + 1);
+    if (estadoPet === 'fome' || estadoPet === 'coco') {
+      setEstadoPet('feliz');
 
-    // Após 6 segundos, ele faz cocô
-    setTimeout(() => {
-      setEstadoPet('coco');
-    }, 6000);
+      // Após 8 segundos, pet faz cocô aumentando a quantidade e muda para estado 'coco'
+      setTimeout(() => {
+        setQuantidadeCoco(prev => prev + 1);
+        setEstadoPet('coco');
+      }, 8000);
+    }
   }
 
-  // Limpa todos os cocôs
+  // Função para limpar todos os cocôs acumulados e retornar o pet para estado 'normal'
   function limparCoco() {
     setQuantidadeCoco(0);
     setEstadoPet('normal');
   }
 
-  // Alterna entre os fundos
+  // Função para trocar o fundo para o próximo da lista
   function trocarFundo() {
     const proximoFundo = (fundoAtual + 1) % fundos.length;
     setFundoAtual(proximoFundo);
   }
 
-  // Alterna entre os chapéus
+  // Função para trocar o chapéu do pet para o próximo da lista
   function trocarChapeu() {
     const proximoChapeu = (chapeuAtual + 1) % chapeus.length;
     setChapeuAtual(proximoChapeu);
   }
 
-  // Imagens diferentes para cada estado do pet
+  // Imagens do pet para cada estado
   const imagemPet = {
     normal: require('./assets/gifs/petChild.gif'),
     fome: require('./assets/gifs/petChildCry.gif'),
@@ -116,29 +151,38 @@ export default function App() {
     feliz: require('./assets/gifs/petChild.gif'),
   };
 
-  // Efeitos visuais
+  // Efeitos visuais (coração, brilho, cocô)
   const efeitos = {
     coracao: require('./assets/gifs/petBigSparkles.gif'),
     brilho: require('./assets/gifs/petSparkles.gif'),
     coco: require('./assets/gifs/petPoo.gif'),
   };
 
+  // Nome do pet
+  const [nomePet, setNomePet] = useState('Salt');
+
   return (
     <View style={estilos.tela}>
       {/* Fundo atual */}
       <Image source={fundos[fundoAtual]} style={estilos.fundo} />
 
-      {/* Botão de trocar fundo */}
-      <TouchableOpacity onPress={trocarFundo} style={[estilos.pincelBtn, { transform: [{ rotate: '-20deg' }] }]}>
-        <Image source={require('./assets/icones/spray.png')} style={estilos.imagempincel} />
+      {/* Botão para trocar o fundo */}
+      <TouchableOpacity
+        onPress={trocarFundo}
+        style={[estilos.pincelBtn, { transform: [{ rotate: '-20deg' }] }]}
+      >
+        <Image
+          source={require('./assets/icones/spray.png')}
+          style={estilos.imagempincel}
+        />
       </TouchableOpacity>
 
-      {/* Botão de trocar chapéu */}
+      {/* Botão para trocar chapéu */}
       <TouchableOpacity onPress={trocarChapeu} style={estilos.botaoChapeu}>
         <Image source={require('./assets/icones/cabide.png')} style={estilos.imagemBotao} />
       </TouchableOpacity>
 
-      {/* Botões de ação: alimentar e limpar */}
+      {/* Botões de ação: alimentar e limpar cocô */}
       <View style={estilos.botoesContainer}>
         <TouchableOpacity
           onPress={alimentarPet}
@@ -165,27 +209,29 @@ export default function App() {
         </TouchableOpacity>
       </View>
 
-      {/* Balão de fala */}
+      {/* Balão de fala do pet */}
       {fala !== '' && (
         <View style={estilos.containerBalao}>
-          <ImageBackground
-            source={require('./assets/balao/balao2.png')}
-            style={estilos.balaoPixel}
-            resizeMode="stretch"
-          >
-            <Text style={estilos.textoPixel}>{fala}</Text>
-          </ImageBackground>
+          <Text style={estilos.textoBalao}>{fala}</Text>
+          <View style={estilos.setaBalao} />
         </View>
       )}
 
-      {/* Área do pet */}
+      {/* Área do pet: nome, chapéu, imagem, efeitos e cocô */}
       <View style={estilos.areaPet}>
+        {/* Nome do pet */}
+        <Text style={estilos.nomePet}>{nomePet}</Text>
+
         {/* Chapéu atual, se houver */}
         {chapeus[chapeuAtual] && (
-          <Image source={chapeus[chapeuAtual]} style={estilos.chapeu} />
+          <Image
+            source={chapeus[chapeuAtual]}
+            style={[estilos.chapeu, estilosChapeus[chapeuAtual] || {}]}
+          />
         )}
 
-        {/* Imagem do pet conforme o estado */}
+
+        {/* Imagem do pet de acordo com o estado */}
         <Image source={imagemPet[estadoPet]} style={estilos.imagemPet} />
 
         {/* Efeito de coração quando está feliz */}
@@ -193,7 +239,7 @@ export default function App() {
           <Image source={efeitos.coracao} style={estilos.efeito} />
         )}
 
-        {/* Mostrar cocôs acumulados */}
+        {/* Mostrar cocôs acumulados na tela */}
         {quantidadeCoco > 0 &&
           Array.from({ length: quantidadeCoco }).map((_, index) => (
             <Image
@@ -261,22 +307,19 @@ const estilos = StyleSheet.create({
     right: 20,
   },
   areaPet: {
-    position: 'absolute',
-    bottom: 70,
-    alignItems: 'center',
+  position: 'absolute',
+  bottom: 90,
+  alignItems: 'center', // centraliza conteúdo horizontalmente
   },
   imagemPet: {
     width: 170,
     height: 170,
   },
   chapeu: {
-    position: 'absolute',
-    top: -30, // ajustado para ficar acima da cabeça do pet
-    width: 120,
-    height: 120,
-    resizeMode: 'contain',
-    zIndex: 2,
-  },
+  position: 'absolute',
+  resizeMode: 'contain',
+  zIndex: 2,
+},
   efeito: {
     position: 'absolute',
     width: 50,
@@ -291,19 +334,26 @@ const estilos = StyleSheet.create({
     position: 'absolute',
   },
   containerBalao: {
-    position: 'absolute',
-    top: '38%',
-    alignSelf: 'center',
-    alignItems: 'flex-start',
-    zIndex: 5,
-  },
-  balaoPixel: {
-    width: 180,
-    height: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    resizeMode: 'contain',
-  },
+  position: 'absolute',
+  top: '30%',
+  alignSelf: 'center',
+  alignItems: 'center',
+  zIndex: 10,
+  Width: 200,
+  height: 40,
+  paddingVertical: 10,
+  paddingHorizontal: 12,
+  backgroundColor: '#f6863d', // laranja principal
+  borderWidth: 4,
+  borderColor: '#fcd267', // borda do balão
+},
+
+textoBalao: {
+  color: '#000',
+  fontSize: 12,
+  fontFamily: 'pixel', // se estiver usando fonte pixelada
+  textAlign: 'center',
+},
   textoPixel: {
     color: '#000',
     fontSize: 10,
@@ -311,4 +361,20 @@ const estilos = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 12,
   },
+  nomePet: {
+  position: 'absolute',
+  bottom: 260,
+  alignSelf: 'center',
+  backgroundColor: '#000000aa',
+  paddingHorizontal: 8,
+  paddingVertical: 4,
+  borderRadius: 10,
+  fontFamily: 'pixel',
+  fontSize: 10,
+  color: '#fff',
+  textAlign: 'center',
+  maxWidth: 200,
+  width: 90,
+  height: 20
+},
 });

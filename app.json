@@ -26,8 +26,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "a29448bf-450b-45aa-b8e6-c6eb337598d5"
+        "projectId": "9d1379c4-9e83-4719-8ce2-afcfb69bcb16"
       }
-    }
+    },
+    "owner": "jottapee"
   }
 }
